@@ -491,7 +491,6 @@
             if(data && data.success && data.stats && data.stats["1"]) {
                 wrongProblemBook = data.wrongBook || [];
                 learningStats = data.stats;
-                // 自動補齊新題型的欄位結構
                 if(!learningStats["4"]) {
                     learningStats["4"] = { name: "單項式乘以多項式 【常數或單項型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 };
                 }
@@ -663,15 +662,15 @@
         if (t === '1') { b = randPos(); d = randPos(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
         if (t === '2') { b = randNeg(); d = randPos(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
         if (t === '3') { b = randNeg(); d = randNeg(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
+        
+        // 🎯 闖關模式新增第 4 類：單項式自動隨機出題
         if (t === '4') {
-            let innerC = randAny();
-            let innerD = randAny();
+            let innerC = randAny(); 
+            let innerD = randAny(); 
             if(Math.random() > 0.5) {
-                // 3(2x + 5) 形式
                 let outK = randAny();
                 return `${outK}(${randChoiceStr(innerC)}${v}${fmtSign(innerD)})`;
             } else {
-                // (3x)(2x + 5) 形式
                 let outA = randAny();
                 return `(${randChoiceStr(outA)}${v})(${randChoiceStr(innerC)}${v}${fmtSign(innerD)})`;
             }
@@ -712,7 +711,6 @@
         loadPolynomialToStage();
     }
 
-    // 🌟 解析核心升級：精準相容 3(2x+1), (3x)(2x+1), (x+2)(x-3) 的動態拆解演算法
     function parseMultiplication(str) {
         let letters = str.replace(/[^a-zA-Z]/g, ''); 
         if(letters.length === 0) { alert("找不到字母變數！請確認輸入內容。"); return false; }
@@ -813,7 +811,7 @@
             document.getElementById('scoreText').innerText = `目前積分：${session.score} 分`;
             document.getElementById('scoreText').style.display = "inline-block";
         } else if (session.currentMode === 'REVIEW') {
-            document.getElementById('step2Title').innerText = "階級魔王錯題展開重溫";
+            document.getElementById('step2Title').innerText = "👹 魔王錯題展開重溫";
             progBannerText = `📘 錯題本溫習中：第 ${session.currentIdx + 1} / ${session.totalQuestions} 題`;
             document.getElementById('scoreText').style.display = "none";
         } else {
@@ -927,17 +925,17 @@
         let v = polyData.v;
         clearGridInputs();
 
-        // 🌟 核心渲染智慧化調整：依據單項式類型將用不到的格子鎖定並設為 0
+        // 🌟 智慧判斷：如果是單項式，自動鎖定停用無效格子（填 0 且 disabled）
         if (polyData.isSingleTerm) {
             if (polyData.singleType === "pure_constant") {
-                // 3(2x + 1) -> 左邊垂直排 a=0（設為0）、b=3
+                // 3(2x + 1) -> a=0（設為0）、b=3
                 document.getElementById('g-v1').innerText = "0";
                 document.getElementById('g-v2').innerText = fmtSign(polyData.b);
                 
                 document.getElementById('cell-0-0').value = "0"; document.getElementById('cell-0-0').disabled = true;
                 document.getElementById('cell-0-1').value = "0"; document.getElementById('cell-0-1').disabled = true;
             } else {
-                // (3x)(2x + 1) -> 左邊垂直排 a=3（帶變數）、b=0（設為0）
+                // (3x)(2x + 1) -> a=3、b=0（設為0）
                 document.getElementById('g-v1').innerText = `${fmt(polyData.a)}${v}`;
                 document.getElementById('g-v2').innerText = "+0";
                 
@@ -945,7 +943,6 @@
                 document.getElementById('cell-1-1').value = "0"; document.getElementById('cell-1-1').disabled = true;
             }
         } else {
-            // 標準二項式
             document.getElementById('g-v1').innerText = polyData.a === 0 ? "0" : `${fmt(polyData.a)}${v}`;
             document.getElementById('g-v2').innerText = fmtSign(polyData.b);
         }
@@ -987,7 +984,7 @@
                     (canonicalizePolyStr(m11, polyData.v) === canonicalizePolyStr(targetC11, polyData.v));
 
         if (match) {
-            alert(`🎯 田字格各區塊面積乘積完全正確！進入同類項合併階段。`);
+            alert(`🎯 田字格各區塊面積乘積完全正確！進入下一步。`);
             
             let step1Items = [];
             if(targetC00!="0") step1Items.push(polyData.cells["0-0"]);
@@ -1000,7 +997,7 @@
             
             document.getElementById('interactiveStageBox').innerHTML = `<span style="font-size:22px; color:#fffb00;">${step1Str}</span>`;
             
-            // 🌟 智慧判斷：若是單項式展開，不需同類項合併（如 9x^2+3x 已是最簡），直接跳至魔法集成第三步！
+            // 🌟 智慧判斷：單項式展開不需要同類項合併，直接跳到第三步魔法集成
             if(polyData.isSingleTerm) {
                 document.getElementById('interactiveStage1').style.display = "none"; 
                 document.getElementById('interactiveStage3').style.display = "block";
@@ -1105,7 +1102,7 @@
                 loadPolynomialToStage();
             } else { 
                 alert(`🏁 溫習結束！`); 
-                resetToMainMenu(false); 
+                resetToMainMenu(false)
             }
         } else {
             resetToMainMenu(false);
@@ -1157,7 +1154,7 @@
         
         let step2Str = "";
         if (polyData.isSingleTerm) {
-            step2Str = polyData.ansStr; // 單項式不需要合併步驟
+            step2Str = polyData.ansStr; 
         } else {
             step2Str = `${polyData.cells["0-0"]} + (${polyData.a * polyData.d}${fmtSign(polyData.b * polyData.c)})${v} ${fmtSign(polyData.b * polyData.d)}`;
         }
