@@ -175,6 +175,7 @@
             border: 2px solid #cbd5e1; border-radius: 6px; outline: none; font-weight: bold;
         }
         .grid-input:focus { border-color: var(--primary); background: #f8fafc; }
+        .grid-input:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; border-color: #cbd5e1; }
 
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8);
@@ -218,7 +219,7 @@
         <p id="printDate">產出日期：載入中...</p>
     </div>
 
-    <h1 class="non-print">🔮 多項式乘法展開大師 (十字魔法陣)</h1>
+    <h1 class="non-print">🔮 多項式乘法展開大師 (田字魔法陣)</h1>
     <hr class="non-print" style="border: 0; height: 1px; background: #ddd; margin-bottom: 20px;">
 
     <div id="step0_login" class="step-panel active">
@@ -289,7 +290,8 @@
                 <option value="1">1. (ax + b)(cx + d) 【全正數型】</option>
                 <option value="2">2. (ax - b)(cx + d) 【單項負數型】</option>
                 <option value="3">3. (ax - b)(cx - d) 【雙常數負數型】</option>
-                <option value="MIX" selected>4. 🔀 隨機正負與多元係數大混戰</option>
+                <option value="4">4. 單項式乘以多項式 【常數或單項型】</option>
+                <option value="MIX" selected>5. 🔀 隨機正負與多元題型大混戰</option>
             </select>
         </div>
 
@@ -314,7 +316,7 @@
             <input type="number" id="targetScoreInput" value="5" min="1" max="50">
         </div>
 
-        <button onclick="initChallengeSession()" style="background-color: var(--success); font-size: 18px;">🎲 建立十字展開關卡，出發！</button>
+        <button onclick="initChallengeSession()" style="background-color: var(--success); font-size: 18px;">🎲 建立田字展開關卡，出發！</button>
     </div>
 
     <div id="step1_solver" class="step-panel">
@@ -326,7 +328,7 @@
         </div>
         <div class="form-group">
             <label for="eqInput">✏️ 請輸入多項式乘式：</label>
-            <input type="text" id="eqInput" placeholder="例如：(x + 2)(x - 3) 或 3(2x + 1)">
+            <input type="text" id="eqInput" placeholder="例如：(x + 2)(x - 3) 或 3(2x + 1) 或 (3x)(3x + 1)">
         </div>
         <button onclick="handleManualSolverInput()" style="font-size: 18px;">開始展開逐步教學</button>
     </div>
@@ -370,7 +372,7 @@
                 <div id="interactiveStage1" style="display: none;">
                     <div class="block-form">
                         <label><strong>第一步：田字魔法陣（分配律乘積）</strong></label>
-                        <p style="color: #4f46e5; font-size:14px; margin: 0 0 5px 0;">💡 老師叮嚀：除了最高次項（左上格），其餘正數項<b>必須主動填寫「+」號</b>（例如 <code>+15x</code> 或是 <code>+20</code>）！若該格為 0 或不適用，請填 0。</p>
+                        <p style="color: #4f46e5; font-size:14px; margin: 0 0 5px 0;">💡 老師叮嚀：除了最高次項（左上格），其餘正數項<b>必須主動填寫「+」號</b>（例如 <code>+15x</code> 或是 <code>+20</code>）！若該格計算結果為 0（被停用項目），請填 0。</p>
                         
                         <div id="magicGridTable" class="grid-table">
                             <div class="grid-cell grid-header">✕</div>
@@ -475,7 +477,6 @@
         const cls = document.getElementById('loginClass').value;
         const seat = document.getElementById('loginSeat').value;
         
-        // 💡 加上專屬前綴，與化簡遊戲的數據隔開，共用同一個試算表工作表
         currentUserKey = `PolyMulti_${cls}-${seat}`;
 
         toggleOverlay(true, `正在跨校園網絡抓取 ${cls}班 ${seat}號 雲端實時數據...`);
@@ -487,15 +488,17 @@
         })
         .then(res => res.json())
         .then(data => {
-            // 判斷雲端是否有舊資料且包含乘法遊戲專屬的結構類型
             if(data && data.success && data.stats && data.stats["1"]) {
                 wrongProblemBook = data.wrongBook || [];
                 learningStats = data.stats;
+                // 自動補齊新題型的欄位結構
+                if(!learningStats["4"]) {
+                    learningStats["4"] = { name: "單項式乘以多項式 【常數或單項型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 };
+                }
                 localStorage.setItem(`PolyMultiCloudCache_${currentUserKey}`, JSON.stringify({
                     wrongBook: wrongProblemBook, stats: learningStats
                 }));
             } else {
-                // 新玩家或結構不符時，初始化專屬數據
                 initFallbackData();
             }
             toggleOverlay(false);
@@ -516,6 +519,9 @@
             if (parsed.stats && parsed.stats["1"]) {
                 wrongProblemBook = parsed.wrongBook || [];
                 learningStats = parsed.stats;
+                if(!learningStats["4"]) {
+                    learningStats["4"] = { name: "單項式乘以多項式 【常數或單項型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 };
+                }
                 return;
             }
         }
@@ -565,7 +571,8 @@
         return {
             1: { name: "(ax + b)(cx + d) 【全正數型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 },
             2: { name: "(ax - b)(cx + d) 【單項負數型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 },
-            3: { name: "(ax - b)(cx - d) 【雙常數負數型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 }
+            3: { name: "(ax - b)(cx - d) 【雙常數負數型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 },
+            4: { name: "單項式乘以多項式 【常數或單項型】", total: 0, firstMatch: 0, retryMatch: 0, failed: 0 }
         };
     }
 
@@ -578,7 +585,7 @@
         wrongAttemptsThisQuestion: 0, hasAddedToWrongBookThisQuestion: false 
     };
 
-    let polyData = { a:0, b:0, c:0, d:0, v:'x', cells: {}, step2_formula: "", ansStr: "", isSingleTerm: false };
+    let polyData = { a:0, b:0, c:0, d:0, v:'x', cells: {}, step2_formula: "", ansStr: "", isSingleTerm: false, singleType: "pure_constant" };
 
     function updateReviewMenuUI() {
         const card = document.getElementById('reviewModeCard');
@@ -628,7 +635,10 @@
 
     function clearGridInputs() {
         ['cell-0-0','cell-0-1','cell-1-0','cell-1-1'].forEach(id => {
-            if(document.getElementById(id)) document.getElementById(id).value = '';
+            if(document.getElementById(id)) {
+                document.getElementById(id).value = '';
+                document.getElementById(id).disabled = false;
+            }
         });
         if(document.getElementById('step2-input')) document.getElementById('step2-input').value = '';
     }
@@ -640,27 +650,39 @@
     }
 
     function generateRandomMultiplication(typeCode) {
-        let t = typeCode === 'MIX' ? ['1','2','3'][Math.floor(Math.random() * 3)] : typeCode;
+        let t = typeCode === 'MIX' ? ['1','2','3','4'][Math.floor(Math.random() * 4)] : typeCode;
         let randPos = () => Math.floor(Math.random() * 5) + 2; 
         let randNeg = () => -(Math.floor(Math.random() * 5) + 2); 
+        let randAny = () => Math.random() > 0.5 ? randPos() : randNeg();
         
         let a = randPos(), b = 0, c = randPos(), d = 0;
-        session.currentTypeNum = parseInt(t);
-
-        if (t === '1') { b = randPos(); d = randPos(); }
-        if (t === '2') { b = randNeg(); d = randPos(); }
-        if (t === '3') { b = randNeg(); d = randNeg(); }
-
         const vars = ['x', 'a', 'm', 'p', 'y'];
         let v = vars[Math.floor(Math.random() * vars.length)];
+        session.currentTypeNum = parseInt(t);
 
-        // 智慧混合隨機省略 1 的結構，增加趣味與多樣性
-        let aStr = (Math.random() > 0.7) ? '' : a;
-        let cStr = (Math.random() > 0.7) ? '' : c;
-
-        return `(${aStr}${v}${fmtSign(b)})(${cStr}${v}${fmtSign(d)})`;
+        if (t === '1') { b = randPos(); d = randPos(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
+        if (t === '2') { b = randNeg(); d = randPos(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
+        if (t === '3') { b = randNeg(); d = randNeg(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
+        if (t === '4') {
+            let innerC = randAny();
+            let innerD = randAny();
+            if(Math.random() > 0.5) {
+                // 3(2x + 5) 形式
+                let outK = randAny();
+                return `${outK}(${randChoiceStr(innerC)}${v}${fmtSign(innerD)})`;
+            } else {
+                // (3x)(2x + 5) 形式
+                let outA = randAny();
+                return `(${randChoiceStr(outA)}${v})(${randChoiceStr(innerC)}${v}${fmtSign(innerD)})`;
+            }
+        }
     }
 
+    function randChoiceStr(val) {
+        if(val === 1) return '';
+        if(val === -1) return '-';
+        return val;
+    }
     function fmt(val) { return val === 1 ? '' : (val === -1 ? '-' : val); }
     function fmtSign(val) { return val >= 0 ? '+' + val : val; }
 
@@ -698,7 +720,6 @@
         polyData.v = v;
         polyData.isSingleTerm = false;
 
-        // 將輸入格式標準化（去除多餘單項式括號如 (3x)(2x+1) -> 3x(2x+1)）
         let s = str.replace(new RegExp(`\\(([+-]?\\d*${v})\\)\\((.*)\\)`), '$1($2)');
 
         let reDouble = new RegExp(`^\\(([+-]?\\d*)${v}([+-]?\\d+)\\)\\(([+-]?\\d*)${v}([+-]?\\d+)\\)$`);
@@ -718,8 +739,10 @@
                 
                 if (hasVar) {
                     polyData.a = leadCoef; polyData.b = 0;
+                    polyData.singleType = "pure_variable";
                 } else {
                     polyData.a = 0; polyData.b = leadCoef;
+                    polyData.singleType = "pure_constant";
                 }
                 polyData.c = m[3]===""||m[3]==="+" ? 1 : (m[3]==="-" ? -1 : parseInt(m[3]));
                 polyData.d = parseInt(m[4]);
@@ -759,7 +782,6 @@
         return true;
     }
 
-    // 🆕 智慧寬鬆規範化機制：支持學生省略或填寫係數「1」而不誤判
     function canonicalizePolyStr(userStr, mainVar) {
         let clean = userStr.replace(/\s+/g, '').toLowerCase().replace(/^\+/, '');
         clean = clean.replace(new RegExp(`([+-])1${mainVar}\\^2`, 'g'), `$1${mainVar}^2`);
@@ -791,7 +813,7 @@
             document.getElementById('scoreText').innerText = `目前積分：${session.score} 分`;
             document.getElementById('scoreText').style.display = "inline-block";
         } else if (session.currentMode === 'REVIEW') {
-            document.getElementById('step2Title').innerText = "👹 魔王錯題展開重溫";
+            document.getElementById('step2Title').innerText = "階級魔王錯題展開重溫";
             progBannerText = `📘 錯題本溫習中：第 ${session.currentIdx + 1} / ${session.totalQuestions} 題`;
             document.getElementById('scoreText').style.display = "none";
         } else {
@@ -888,7 +910,6 @@
         }
     }
 
-    // 🔮 啟動引導破譯程序：載入優雅淡入與流光魔法陣動效
     function startInteractiveSolving() {
         document.getElementById('solveBtn').style.display = "none"; 
         
@@ -904,12 +925,34 @@
         document.getElementById('interactiveStage3').style.display = "none";
         
         let v = polyData.v;
-        document.getElementById('g-h1').innerText = polyData.c === 0 ? "0" : `${fmt(polyData.c)}${v}`;
-        document.getElementById('g-h2').innerText = polyData.isSingleTerm && polyData.a === 0 ? "0" : fmtSign(polyData.d);
-        document.getElementById('g-v1').innerText = polyData.a === 0 ? "0" : `${fmt(polyData.a)}${v}`;
-        document.getElementById('g-v2').innerText = fmtSign(polyData.b);
-
         clearGridInputs();
+
+        // 🌟 核心渲染智慧化調整：依據單項式類型將用不到的格子鎖定並設為 0
+        if (polyData.isSingleTerm) {
+            if (polyData.singleType === "pure_constant") {
+                // 3(2x + 1) -> 左邊垂直排 a=0（設為0）、b=3
+                document.getElementById('g-v1').innerText = "0";
+                document.getElementById('g-v2').innerText = fmtSign(polyData.b);
+                
+                document.getElementById('cell-0-0').value = "0"; document.getElementById('cell-0-0').disabled = true;
+                document.getElementById('cell-0-1').value = "0"; document.getElementById('cell-0-1').disabled = true;
+            } else {
+                // (3x)(2x + 1) -> 左邊垂直排 a=3（帶變數）、b=0（設為0）
+                document.getElementById('g-v1').innerText = `${fmt(polyData.a)}${v}`;
+                document.getElementById('g-v2').innerText = "+0";
+                
+                document.getElementById('cell-1-0').value = "0"; document.getElementById('cell-1-0').disabled = true;
+                document.getElementById('cell-1-1').value = "0"; document.getElementById('cell-1-1').disabled = true;
+            }
+        } else {
+            // 標準二項式
+            document.getElementById('g-v1').innerText = polyData.a === 0 ? "0" : `${fmt(polyData.a)}${v}`;
+            document.getElementById('g-v2').innerText = fmtSign(polyData.b);
+        }
+        
+        document.getElementById('g-h1').innerText = polyData.c === 0 ? "0" : `${fmt(polyData.c)}${v}`;
+        document.getElementById('g-h2').innerText = fmtSign(polyData.d);
+
         renderMathSteps(1);
 
         if (session.currentMode === 'CHALLENGE' && !session.hasAddedToWrongBookThisQuestion) {
@@ -920,7 +963,6 @@
         }
     }
 
-    // 第一步驗證：田字格（強制要求正號判定，同時兼顧 1x 寬鬆比對）
     function executeUnbracketStage() {
         const c00 = document.getElementById('cell-0-0').value.replace(/\s+/g, '').toLowerCase();
         const c01 = document.getElementById('cell-0-1').value.replace(/\s+/g, '').toLowerCase();
@@ -932,7 +974,6 @@
         let targetC10 = polyData.cells["1-0"].toLowerCase();
         let targetC11 = polyData.cells["1-1"].toLowerCase();
 
-        // 檢查學生的格子是否漏掉了強制叮嚀的正號
         if ((targetC01.startsWith('+') && c01 === targetC01.substring(1)) ||
             (targetC10.startsWith('+') && m10 === targetC10.substring(1)) ||
             (targetC11.startsWith('+') && m11 === targetC11.substring(1))) {
@@ -940,7 +981,6 @@
             return;
         }
 
-        // 使用寬鬆對齊演算判定（如 +1x 與 +x 視為皆對）
         let match = (canonicalizePolyStr(c00, polyData.v) === canonicalizePolyStr(targetC00, polyData.v)) &&
                     (canonicalizePolyStr(c01, polyData.v) === canonicalizePolyStr(targetC01, polyData.v)) &&
                     (canonicalizePolyStr(m10, polyData.v) === canonicalizePolyStr(targetC10, polyData.v)) &&
@@ -956,13 +996,21 @@
             if(targetC11!="0") step1Items.push(polyData.cells["1-1"]);
             let step1Str = step1Items.join('');
             if(step1Str.startsWith('+')) step1Str = step1Str.substring(1);
+            if(step1Str === "") step1Str = "0";
             
             document.getElementById('interactiveStageBox').innerHTML = `<span style="font-size:22px; color:#fffb00;">${step1Str}</span>`;
             
-            document.getElementById('interactiveStage1').style.display = "none"; 
-            document.getElementById('interactiveStage2').style.display = "block";
-            setupCombineUI(); 
-            renderMathSteps(2);
+            // 🌟 智慧判斷：若是單項式展開，不需同類項合併（如 9x^2+3x 已是最簡），直接跳至魔法集成第三步！
+            if(polyData.isSingleTerm) {
+                document.getElementById('interactiveStage1').style.display = "none"; 
+                document.getElementById('interactiveStage3').style.display = "block";
+                renderMathSteps(3);
+            } else {
+                document.getElementById('interactiveStage1').style.display = "none"; 
+                document.getElementById('interactiveStage2').style.display = "block";
+                setupCombineUI(); 
+                renderMathSteps(2);
+            }
         } else { 
             alert(`❌ 田字格中有格子算錯或正負符號有誤，請對照表頭重新計算一次！`); 
         }
@@ -1013,7 +1061,6 @@
             document.getElementById('interactiveStageBox').innerHTML = `展開大功告成：<span style="color:#00ff00;">${polyData.ansStr}</span> 🎯`;
             document.getElementById('interactiveStage3').style.display = "none"; document.getElementById('nextBtn').style.display = "block";
             
-            // 任務完成，解開流光外框
             document.getElementById('magicGridTable').classList.remove('magic-active-zone');
 
             if (session.currentMode === 'REVIEW') {
@@ -1037,7 +1084,7 @@
                 loadPolynomialToStage();
             } else {
                 if (session.endCondition === 'COUNT') {
-                    alert(`🏁 恭喜完成整組代數十字展開挑戰！數據已自動同步備份至雲端。`); 
+                    alert(`🏁 恭喜完成整組代數田字展開挑戰！數據已自動同步備份至雲端。`); 
                     resetToMainMenu(false);
                 } else {
                     if (session.score >= session.targetScore) { 
@@ -1079,7 +1126,6 @@
         document.getElementById('statsWrongList').innerHTML = wrongProblemBook.length > 0 ? wrongProblemBook.map((prob, i) => `<div>❌ 魔王題 ${i+1}： ${prob}</div>`).join('') : '🎉 雲端暫無錯題，表現優異！';
         
         if (currentUserKey) {
-            // 💡 解析報表時將 PolyMulti_ 識別碼去除，精準還原乾淨的班級學號
             let cleanKey = currentUserKey.replace("PolyMulti_", "");
             let parts = cleanKey.split('-');
             document.getElementById('printStudentInfo').innerText = `學生班別：${parts[0]} 班 &nbsp;&nbsp;&nbsp;&nbsp; 學號：${parts[1]} 號`;
@@ -1105,16 +1151,24 @@
         if(targetC11!="0") step1Items.push(targetC11);
         let step1Str = step1Items.join('');
         if(step1Str.startsWith('+')) step1Str = step1Str.substring(1);
+        if(step1Str === "") step1Str = "0";
 
         if(stepCode >= 2) html += `<div class="${stepCode===2?'active-line':''}">[分配律展開] = ${step1Str}</div>`;
         
         let step2Str = "";
         if (polyData.isSingleTerm) {
-            step2Str = polyData.ansStr;
+            step2Str = polyData.ansStr; // 單項式不需要合併步驟
         } else {
             step2Str = `${polyData.cells["0-0"]} + (${polyData.a * polyData.d}${fmtSign(polyData.b * polyData.c)})${v} ${fmtSign(polyData.b * polyData.d)}`;
         }
-        if(stepCode >= 3) html += `<div class="${stepCode===3?'active-line':''}">[同類項分組] = ${step2Str}</div>`;
+        
+        if(stepCode >= 3) {
+            if (polyData.isSingleTerm) {
+                html += `<div class="${stepCode===3?'active-line':''}">[分配律乘積結果] = ${step2Str}</div>`;
+            } else {
+                html += `<div class="${stepCode===3?'active-line':''}">[同類項分組] = ${step2Str}</div>`;
+            }
+        }
         if(stepCode >= 4) html += `<div class="active-line">[最簡化結果] = ${polyData.ansStr} 🎯</div>`;
         box.innerHTML = html;
     }
