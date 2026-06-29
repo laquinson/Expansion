@@ -372,20 +372,20 @@
                 <div id="interactiveStage1" style="display: none;">
                     <div class="block-form">
                         <label><strong>第一步：田字魔法陣（分配律乘積）</strong></label>
-                        <p style="color: #4f46e5; font-size:14px; margin: 0 0 5px 0;">💡 老師叮嚀：除了最高次項（左上格），其餘正數項<b>必須主動填寫「+」號</b>（例如 <code>+15x</code> 或是 <code>+20</code>）！若該格計算結果為 0（被停用項目），請填 0。</p>
+                        <p style="color: #4f46e5; font-size:14px; margin: 0 0 5px 0;">💡 老師叮嚀：除了各行首項，其餘正數項<b>必須主動填寫「+」號</b>（例如 <code>+15x</code> 或是 <code>+20</code>）。</p>
                         
                         <div id="magicGridTable" class="grid-table">
-                            <div class="grid-cell grid-header">✕</div>
+                            <div class="grid-cell grid-header" style="background:none; border:none;"></div>
                             <div id="g-h1" class="grid-cell grid-header">2x</div>
                             <div id="g-h2" class="grid-cell grid-header">+5</div>
                             
-                            <div id="g-v1" class="grid-cell grid-header">3x</div>
-                            <div><input type="text" id="cell-0-0" class="grid-input" placeholder="左上"></div>
-                            <div><input type="text" id="cell-0-1" class="grid-input" placeholder="右上"></div>
+                            <div id="g-v1" class="grid-cell grid-header row-one-item">3x</div>
+                            <div class="row-one-item"><input type="text" id="cell-0-0" class="grid-input" placeholder="左上"></div>
+                            <div class="row-one-item"><input type="text" id="cell-0-1" class="grid-input" placeholder="右上"></div>
                             
-                            <div id="g-v2" class="grid-cell grid-header">+4</div>
-                            <div><input type="text" id="cell-1-0" class="grid-input" placeholder="左下"></div>
-                            <div><input type="text" id="cell-1-1" class="grid-input" placeholder="右下"></div>
+                            <div id="g-v2" class="grid-cell grid-header row-two-item">+4</div>
+                            <div class="row-two-item"><input type="text" id="cell-1-0" class="grid-input" placeholder="左下"></div>
+                            <div class="row-two-item"><input type="text" id="cell-1-1" class="grid-input" placeholder="右下"></div>
                         </div>
 
                         <button onclick="executeUnbracketStage()">確認田字格數值</button>
@@ -663,7 +663,6 @@
         if (t === '2') { b = randNeg(); d = randPos(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
         if (t === '3') { b = randNeg(); d = randNeg(); return `(${randChoiceStr(a)}${v}${fmtSign(b)})(${randChoiceStr(c)}${v}${fmtSign(d)})`; }
         
-        // 🎯 闖關模式新增第 4 類：單項式自動隨機出題
         if (t === '4') {
             let innerC = randAny(); 
             let innerD = randAny(); 
@@ -925,24 +924,38 @@
         let v = polyData.v;
         clearGridInputs();
 
-        // 🌟 智慧判斷：如果是單項式，自動鎖定停用無效格子（填 0 且 disabled）
+        // 重設 Grid 的列結構（預設 3 列）
+        gridTable.style.gridTemplateRows = "repeat(3, 65px)";
+
+        // 🌟 智慧隱藏邏輯：如果是單項式，直接將為 0 的那一橫行連同對應格在前端「消失隱藏」，並更新 CSS Grid
         if (polyData.isSingleTerm) {
             if (polyData.singleType === "pure_constant") {
-                // 3(2x + 1) -> a=0（設為0）、b=3
-                document.getElementById('g-v1').innerText = "0";
+                // 3(2x + 1) -> 垂直外項 a=0（Row 1 全零，直接隱藏）
+                document.querySelectorAll('.row-one-item').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.row-two-item').forEach(el => el.style.display = 'flex');
+                gridTable.style.gridTemplateRows = "65px 0px 65px"; // 隱藏 Row 1 空間
+
                 document.getElementById('g-v2').innerText = fmtSign(polyData.b);
-                
-                document.getElementById('cell-0-0').value = "0"; document.getElementById('cell-0-0').disabled = true;
-                document.getElementById('cell-0-1').value = "0"; document.getElementById('cell-0-1').disabled = true;
+                // 預填隱藏格的數值，以便通過之後的 executeUnbracketStage 比對
+                document.getElementById('cell-0-0').value = "0";
+                document.getElementById('cell-0-1').value = "0";
             } else {
-                // (3x)(2x + 1) -> a=3、b=0（設為0）
+                // (3x)(2x + 1) -> 垂直外項 b=0（Row 2 全零，直接隱藏）
+                document.querySelectorAll('.row-one-item').forEach(el => el.style.display = 'flex');
+                document.querySelectorAll('.row-two-item').forEach(el => el.style.display = 'none');
+                gridTable.style.gridTemplateRows = "65px 65px 0px"; // 隱藏 Row 2 空間
+
                 document.getElementById('g-v1').innerText = `${fmt(polyData.a)}${v}`;
-                document.getElementById('g-v2').innerText = "+0";
-                
-                document.getElementById('cell-1-0').value = "0"; document.getElementById('cell-1-0').disabled = true;
-                document.getElementById('cell-1-1').value = "0"; document.getElementById('cell-1-1').disabled = true;
+                // 預填隱藏格的數值
+                document.getElementById('cell-1-0').value = "0";
+                document.getElementById('cell-1-1').value = "0";
             }
         } else {
+            // 標準二項式 -> 全部顯示，恢復標準排版
+            document.querySelectorAll('.row-one-item').forEach(el => el.style.display = 'flex');
+            document.querySelectorAll('.row-two-item').forEach(el => el.style.display = 'flex');
+            gridTable.style.gridTemplateRows = "repeat(3, 65px)";
+
             document.getElementById('g-v1').innerText = polyData.a === 0 ? "0" : `${fmt(polyData.a)}${v}`;
             document.getElementById('g-v2').innerText = fmtSign(polyData.b);
         }
@@ -971,9 +984,10 @@
         let targetC10 = polyData.cells["1-0"].toLowerCase();
         let targetC11 = polyData.cells["1-1"].toLowerCase();
 
-        if ((targetC01.startsWith('+') && c01 === targetC01.substring(1)) ||
-            (targetC10.startsWith('+') && m10 === targetC10.substring(1)) ||
-            (targetC11.startsWith('+') && m11 === targetC11.substring(1))) {
+        // 防呆提示微調
+        if ((!document.getElementById('cell-0-1').disabled && document.getElementById('cell-0-1').style.display !== 'none' && targetC01.startsWith('+') && c01 === targetC01.substring(1)) ||
+            (!document.getElementById('cell-1-0').disabled && document.getElementById('cell-1-0').style.display !== 'none' && targetC10.startsWith('+') && m10 === targetC10.substring(1)) ||
+            (!document.getElementById('cell-1-1').disabled && document.getElementById('cell-1-1').style.display !== 'none' && targetC11.startsWith('+') && m11 === targetC11.substring(1))) {
             alert("💡 格式提示：正數項目請嚴謹填寫出「+」號（例如：+15x 或 +20），不能省略喔！");
             return;
         }
@@ -997,7 +1011,6 @@
             
             document.getElementById('interactiveStageBox').innerHTML = `<span style="font-size:22px; color:#fffb00;">${step1Str}</span>`;
             
-            // 🌟 智慧判斷：單項式展開不需要同類項合併，直接跳到第三步魔法集成
             if(polyData.isSingleTerm) {
                 document.getElementById('interactiveStage1').style.display = "none"; 
                 document.getElementById('interactiveStage3').style.display = "block";
